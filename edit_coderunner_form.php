@@ -757,7 +757,8 @@ class qtype_coderunner_edit_form extends question_edit_form {
         $gradertypes = array('EqualityGrader' => get_string('equalitygrader', 'qtype_coderunner'),
                 'NearEqualityGrader' => get_string('nearequalitygrader', 'qtype_coderunner'),
                 'RegexGrader'    => get_string('regexgrader', 'qtype_coderunner'),
-                'TemplateGrader' => get_string('templategrader', 'qtype_coderunner'));
+                'TemplateGrader' => get_string('templategrader', 'qtype_coderunner'),
+                'TestLibGrader' => get_string('testlibgrader', 'qtype_coderunner'));
         $gradingcontrols[] = $mform->createElement('select', 'grader', null, $gradertypes);
         $mform->addElement('group', 'gradingcontrols',
                 get_string('grading', 'qtype_coderunner'), $gradingcontrols,
