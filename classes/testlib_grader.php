@@ -43,7 +43,7 @@ class qtype_coderunner_testlib_grader extends qtype_coderunner_grader {
 
         if (!isset($supportFiles["check.cpp"])) {
             $testCase->abort = true;
-            return new qtype_coderunner_test_result($testCase, false, 0.0, '');
+            return new qtype_coderunner_test_result($testCase, false, 0.0, 'cannot find check.cpp');
         }
 
         $sandbox = $question->get_sandbox();
@@ -51,7 +51,12 @@ class qtype_coderunner_testlib_grader extends qtype_coderunner_grader {
         $result = $sandbox->execute($supportFiles["check.cpp"], "testlib", $output, [md5($testLibFile) => $testLibFile]);
         $sandbox->close();
 
-        $isCorrect = $result == 0;
+        if ($result->result !== qtype_coderunner_sandbox::OK) {
+            $testCase->abort = true;
+            return new qtype_coderunner_test_result($testCase, false, 0.0, 'cannot compile and run checker');
+        }
+
+        $isCorrect = $result->output == 0;
         $awardedMark = $isCorrect ? $testCase->mark : 0.0;
 
         return new qtype_coderunner_test_result($testCase, $isCorrect, $awardedMark, $output);
