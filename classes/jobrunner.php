@@ -44,7 +44,7 @@ class qtype_coderunner_jobrunner {
     // $answerlanguage will be the empty string except for multilanguage questions,
     // when it is the language selected in the language drop-down menu.
     // Returns a TestingOutcome object.
-    public function run_tests($question, $code, $attachments, $testcases, $isprecheck, $answerlanguage) {
+    public function run_tests(qtype_coderunner_question $question, $code, $attachments, $testcases, $isprecheck, $answerlanguage) {
         global $CFG;
 
         $question->get_prototype();
