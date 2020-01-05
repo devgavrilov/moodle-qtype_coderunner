@@ -48,7 +48,7 @@ class qtype_coderunner_testlib_grader extends qtype_coderunner_grader {
 
         $sandbox = $question->get_sandbox();
         $testLibFile = (new curl())->get("https://raw.githubusercontent.com/MikeMirzayanov/testlib/master/testlib.h");
-        $result = $sandbox->execute($supportFiles["check.cpp"], "testlib", $output, [md5($testLibFile) => $testLibFile]);
+        $result = $sandbox->execute($supportFiles["check.cpp"], "testlib", $output, ["testlib.h" => $testLibFile]);
         $sandbox->close();
 
         if ($result->error !== qtype_coderunner_sandbox::OK) {
