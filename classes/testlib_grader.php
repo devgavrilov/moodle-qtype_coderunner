@@ -56,9 +56,10 @@ class qtype_coderunner_testlib_grader extends qtype_coderunner_grader {
             return new qtype_coderunner_test_result($testCase, false, 0.0, 'cannot compile and run checker');
         }
 
-        $isCorrect = $result->output == 0;
+        $resultData = explode('|', $result->output);
+        $isCorrect = intval($resultData[0]) === 0;
         $awardedMark = $isCorrect ? $testCase->mark : 0.0;
 
-        return new qtype_coderunner_test_result($testCase, $isCorrect, $awardedMark, $output);
+        return new qtype_coderunner_test_result($testCase, $isCorrect, $awardedMark, $resultData[1]);
     }
 }
