@@ -1,0 +1,23 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: SSH Commands
+      uses: appleboy/ssh-action@v0.0.2
+      with:
+        host: ${{ secrets.DEV_HOST }}
+        username: ${{ secrets.DEV_USERNAME }}
+        key: ${{ secrets.DEV_DEPLOY_KEY }}
+        script: |
+          rm -r /var/www/moodle/question/type/coderunner
+    - name: Upload
+      uses: contention/rsync-deployments@v1.0.0
+      env:
+        DEPLOY_KEY: ${{ secrets.DEV_DEPLOY_KEY }}
+      with:
+        args: "-avzr ${{ secrets.DEV_USERNAME }}@${{ secrets.DEV_HOST }}:/var/www/moodle/question/type/coderunner"
