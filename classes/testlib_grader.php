@@ -51,7 +51,7 @@ class qtype_coderunner_testlib_grader extends qtype_coderunner_grader {
         $result = $sandbox->execute($supportFiles["check.cpp"], "testlib", $output, [md5($testLibFile) => $testLibFile]);
         $sandbox->close();
 
-        if ($result->result !== qtype_coderunner_sandbox::OK) {
+        if ($result->error !== qtype_coderunner_sandbox::OK) {
             $testCase->abort = true;
             return new qtype_coderunner_test_result($testCase, false, 0.0, 'cannot compile and run checker');
         }
