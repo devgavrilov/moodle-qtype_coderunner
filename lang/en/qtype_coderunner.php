@@ -1082,6 +1082,7 @@ $string['testcases'] = 'Test cases';
 $string['testcode'] = 'Test code';
 $string['testcolhdr'] = 'Test';
 $string['testingquestion'] = 'Testing question {$a}';
+$string['testlibgrader'] = 'TestLib grader';
 $string['testsplitterre'] = 'Test splitter (regex)';
 $string['testcode_help'] = 'The code for the test, seen by the template as {{TEST.testcode}}';
 $string['testtype'] = 'Precheck test type';

@@ -47,7 +47,7 @@ class qtype_coderunner_near_equality_grader extends qtype_coderunner_grader {
     }
 
 
-    protected function grade_known_good(&$output, &$testcase) {
+    protected function grade_known_good(&$output, &$testcase, $question) {
         $cleanedoutput = qtype_coderunner_util::clean($output);
         $cleanedexpected = qtype_coderunner_util::clean($testcase->expected);
         $iscorrect = $this->reduce($cleanedoutput) == $this->reduce($cleanedexpected);

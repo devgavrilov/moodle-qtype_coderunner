@@ -27,11 +27,11 @@ require_once($CFG->dirroot . '/question/type/coderunner/questiontype.php');
 // The qtype_coderunner_jobrunner class contains all code concerned with running a question
 // in the sandbox and grading the result.
 class qtype_coderunner_jobrunner {
-    private $grader = null;          // The grader instance, if it's NOT a custom one.
+    private ?qtype_coderunner_grader $grader = null;          // The grader instance, if it's NOT a custom one.
     private $sandbox = null;         // The sandbox we're using.
     private $code = null;            // The code we're running.
     private $files = null;           // The files to be loaded into the working dir.
-    private $question = null;        // The question that we're running code for.
+    private ?qtype_coderunner_question $question = null;        // The question that we're running code for.
     private $testcases = null;       // The testcases (a subset of those in the question).
     private $allruns = null;         // Array of the source code for all runs.
     private $precheck = null;        // True if this is a precheck run.
@@ -44,7 +44,7 @@ class qtype_coderunner_jobrunner {
     // $answerlanguage will be the empty string except for multilanguage questions,
     // when it is the language selected in the language drop-down menu.
     // Returns a TestingOutcome object.
-    public function run_tests($question, $code, $attachments, $testcases, $isprecheck, $answerlanguage) {
+    public function run_tests(qtype_coderunner_question $question, $code, $attachments, $testcases, $isprecheck, $answerlanguage) {
         global $CFG;
 
         $question->get_prototype();
@@ -227,7 +227,7 @@ class qtype_coderunner_jobrunner {
 
     // Grade a given test result by calling the grader.
     private function grade($output, $testcase, $isbad = false) {
-        return $this->grader->grade($output, $testcase, $isbad);
+        return $this->grader->grade($output, $testcase, $this->question, $isbad);
     }
 
     /**

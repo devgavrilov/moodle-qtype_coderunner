@@ -49,7 +49,7 @@ class qtype_coderunner_regex_grader extends qtype_coderunner_grader {
      *  Should not be called if the execution failed (syntax error, exception
      *  etc).
      */
-    public function grade_known_good(&$output, &$testcase) {
+    public function grade_known_good(&$output, &$testcase, $question) {
         $regex = '/' . str_replace('/', '\/', rtrim($testcase->expected)) . '/ms';
         $iscorrect = preg_match($regex, $output);
         $awardedmark = $iscorrect ? $testcase->mark : 0.0;

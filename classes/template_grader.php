@@ -48,7 +48,7 @@ class qtype_coderunner_template_grader extends qtype_coderunner_grader {
      *  Construction of the TestingOutcome in the case of a combinator template
      *  grading is done by jobrunner.php.
      */
-    protected function grade_known_good(&$output, &$testcase) {
+    protected function grade_known_good(&$output, &$testcase, $question) {
         $result = json_decode($output);
         if ($result === null || !isset($result->fraction) || !is_numeric($result->fraction)) {
             $errormessage = get_string('brokentemplategrader', 'qtype_coderunner',

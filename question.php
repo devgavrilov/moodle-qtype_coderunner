@@ -571,8 +571,7 @@ class qtype_coderunner_question extends question_graded_automatically {
     }
 
     // Return an instance of the sandbox to be used to run code for this question.
-    public function get_sandbox() {
-        global $CFG;
+    public function get_sandbox(): qtype_coderunner_sandbox {
         $sandbox = $this->sandbox; // Get the specified sandbox (if question has one).
         if ($sandbox === null) {   // No sandbox specified. Use best we can find.
             $sandboxinstance = qtype_coderunner_sandbox::get_best_sandbox($this->language);
