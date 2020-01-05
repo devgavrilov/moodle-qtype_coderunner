@@ -12,4 +12,4 @@ jobs:
       env:
         DEPLOY_KEY: ${{ secrets.DEV_DEPLOY_KEY }}
       with:
-        args: "-avzr --exclude=.git --delete ${{ secrets.DEV_USERNAME }}@${{ secrets.DEV_HOST }}:/var/www/moodle/question/type/coderunner"
+        args: "-avzrc --exclude=.git --delete ${{ secrets.DEV_USERNAME }}@${{ secrets.DEV_HOST }}:/var/www/moodle/question/type/coderunner"
