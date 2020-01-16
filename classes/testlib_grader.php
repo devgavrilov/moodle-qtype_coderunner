@@ -48,7 +48,13 @@ class qtype_coderunner_testlib_grader extends qtype_coderunner_grader {
 
         $sandbox = $question->get_sandbox();
         $testLibFile = (new curl())->get("https://raw.githubusercontent.com/MikeMirzayanov/testlib/master/testlib.h");
-        $result = $sandbox->execute($supportFiles["check.cpp"], "testlib", $output, ["testlib.h" => $testLibFile]);
+        
+        $testLibInput = array(
+            'input' => $testCase->stdin,
+            'output' => $testCase->expected,
+            'answer' => $output,
+        );
+        $result = $sandbox->execute($supportFiles["check.cpp"], "testlib", json_encode($testLibInput), ["testlib.h" => $testLibFile]);
         $sandbox->close();
 
         if ($result->error !== qtype_coderunner_sandbox::OK) {
@@ -56,10 +62,10 @@ class qtype_coderunner_testlib_grader extends qtype_coderunner_grader {
             return new qtype_coderunner_test_result($testCase, false, 0.0, 'cannot compile and run checker');
         }
 
-        $resultData = explode('|', $result->output);
-        $isCorrect = intval($resultData[0]) === 0;
+        $resultData = json_decode($result->output);
+        $isCorrect = $resultData->code === 0;
         $awardedMark = $isCorrect ? $testCase->mark : 0.0;
 
-        return new qtype_coderunner_test_result($testCase, $isCorrect, $awardedMark, $resultData[1]);
+        return new qtype_coderunner_test_result($testCase, $isCorrect, $awardedMark, $resultData->message);
     }
 }
