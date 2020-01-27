@@ -806,6 +806,11 @@ $string['qtype_sql'] = '<p>An <b>experimental</b> SQL question type, using sqlit
 </code></pre>
 <p>will instead use column widths of 10, 50, 10 and 5 for the first four columns.</p>';
 
+$string['qtype_kotlin_program'] = '<p>A Kotlin question type where the student
+ answer is a complete Kotlin program. The program is compiled and run once for
+ each test case, using the standard input provided in the test case and
+ ignoring the <i>testcode</i> and <i>extra</i> fields.</p>';
+
 $string['qtypehelp'] = 'Help with q-type';
 $string['questioncheckboxes'] = 'Customisation';
 $string['questioncheckboxes_help'] = 'To customise the question type, e.g. to edit the question templates or
