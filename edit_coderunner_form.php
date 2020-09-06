@@ -275,7 +275,7 @@ class qtype_coderunner_edit_form extends question_edit_form {
      *      Default QUESTION_NUMANS_START.
      * @param $addoptions the number of testcase blanks to add. Default QUESTION_NUMANS_ADD.
      */
-    protected function add_per_testcase_fields($mform, $label, $numtestcases) {
+    protected function add_per_testcase_fields(MoodleQuickForm $mform, $label, $numtestcases) {
         $mform->addElement('header', 'testcasehdr',
                     get_string('testcases', 'qtype_coderunner'), '');
         $mform->setExpanded('testcasehdr', 1);
@@ -294,7 +294,7 @@ class qtype_coderunner_edit_form extends question_edit_form {
     /*
      *  A rewritten version of get_per_answer_fields specific to test cases.
      */
-    public function get_per_testcase_fields($mform, $label, &$repeatedoptions) {
+    public function get_per_testcase_fields(MoodleQuickForm $mform, string $label, &$repeatedoptions) {
         $repeated = array();
         $repeated[] = $mform->createElement('textarea', 'testcode',
                 $label,
@@ -595,12 +595,12 @@ class qtype_coderunner_edit_form extends question_edit_form {
 
     // Create an empty div with id id_qtype_coderunner_error_div for use by
     // JavaScript error handling code.
-    private function make_error_div($mform) {
+    private function make_error_div(MoodleQuickForm $mform) {
         $mform->addElement('html', "<div id='id_qtype_coderunner_error_div' class='qtype_coderunner_error_message'></div>");
     }
 
     // Add to the supplied $mform the panel "Coderunner question type".
-    private function make_questiontype_panel($mform) {
+    private function make_questiontype_panel(MoodleQuickForm $mform) {
         list($languages, $types) = $this->get_languages_and_types();
 
         $mform->addElement('header', 'questiontypeheader', get_string('type_header', 'qtype_coderunner'));

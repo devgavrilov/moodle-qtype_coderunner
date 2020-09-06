@@ -342,6 +342,7 @@ class qtype_coderunner_jobesandbox extends qtype_coderunner_sandbox {
 
         $curl = new curl();
         $curl->setHeader($headers);
+        $curl->setopt(array('CURLOPT_TIMEOUT' => 5 * 60));
 
         if ($method === self::HTTP_GET) {
             if (!empty($body)) {

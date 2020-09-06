@@ -437,6 +437,11 @@ $string['prototype_error'] = '*** PROTOTYPE LOAD FAILURE. DON\'T SAVE THIS! ***'
 $string['prototype_load_failure'] = 'Error loading prototype: ';
 $string['prototypeQ'] = 'Is prototype?';
 
+$string['qtype_android_program'] = '<p>An Android question type where the student
+ answer is a complete Android program. The program is compiled and run once for
+ each test case, using the standard input provided in the test case and
+ ignoring the <i>testcode</i> and <i>extra</i> fields.</p>';
+
 $string['qtype_c_function'] = '<p>A question type for C write-a-function questions.
 The student answer is expected to be a complete C function, but it can optionally
 be preceded by other self-contained C code such as preprocessor directives and
