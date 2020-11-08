@@ -296,6 +296,14 @@ abstract class qtype_coderunner_sandbox {
      */
     abstract public function execute($sourcecode, $language, $input, $files=null, $params=null);
 
+    public function send($sourcecode, $language, $input, $files=null, $params=null) {
+
+    }
+
+    public function check($run_id) {
+
+    }
+
     /** Function called by the tester as a simple sanity check on the
      *  existence of a particular sandbox subclass.
      * @return object A result object with an 'error' attribute. If that

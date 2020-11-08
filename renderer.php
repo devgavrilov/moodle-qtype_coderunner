@@ -50,6 +50,25 @@ class qtype_coderunner_renderer extends qtype_renderer {
         global $CFG, $PAGE;
         global $USER;
 
+        $last_step = $qa->get_last_step();
+
+        if ($last_step->has_qt_var('_run_ids') && !$last_step->has_qt_var('_testoutcome')) {
+            $quba = question_engine::load_questions_usage_by_activity($qa->get_usage_id());
+
+            $dbQa = $quba->get_question_attempt($qa->get_slot());
+
+            $last_step_data = $last_step->get_all_data();
+            $last_step_data['_check'] = true;
+
+            try {
+                $dbQa->process_action($last_step_data);
+                question_engine::save_questions_usage_by_activity($quba);
+                return $this->formulation_and_controls($dbQa, $options);
+            } catch (qtype_coderunner_not_checked_yet_exception $exception) {
+
+            }
+        }
+
         $question = $qa->get_question();
         $qid = $question->id;
 	if (empty($USER->coderunnerquestionids)) {
@@ -224,7 +243,7 @@ class qtype_coderunner_renderer extends qtype_renderer {
         $optionsclone = clone($options);
         $q = $qa->get_question();
         $feedbackdisplay = $q->display_feedback();
-        if ($feedbackdisplay !== constants::FEEDBACK_USE_QUIZ && !empty($qa->get_last_qt_var('_testoutcome'))) {
+        if ($feedbackdisplay !== constants::FEEDBACK_USE_QUIZ && !empty($qa->get_last_step()->get_qt_var('_run_ids'))) {
             if ($feedbackdisplay === CONSTANTS::FEEDBACK_SHOW) {
                 $optionsclone->feedback = 1;
             } else if ($feedbackdisplay === CONSTANTS::FEEDBACK_HIDE) {
@@ -243,17 +262,21 @@ class qtype_coderunner_renderer extends qtype_renderer {
      * @return string HTML fragment.
      */
     protected function specific_feedback(question_attempt $qa) {
-        $toserialised = $qa->get_last_qt_var('_testoutcome');
-        if (!$toserialised) { // Something broke?
+        if (!$qa->get_last_step()->has_qt_var('_run_ids')) {
             return '';
         }
 
-        $q = $qa->get_question();
-        $outcome = unserialize($toserialised);
+        if (!$qa->get_last_step()->has_qt_var('_testoutcome')) {
+            return get_string('checkinprocess', 'qtype_coderunner');
+        }
+
+        $outcome = unserialize($qa->get_last_step()->get_qt_var('_testoutcome'));
         if ($outcome === false) {
             $outcome = new qtype_coderunner_testing_outcome(0, 0, false);
             $outcome->set_status(qtype_coderunner_testing_outcome::STATUS_UNSERIALIZE_FAILED);
         }
+
+        $q = $qa->get_question();
         $resultsclass = $this->results_class($outcome, $q->allornothing);
         $isprecheck = $outcome->is_precheck($qa);
         if ($isprecheck) {

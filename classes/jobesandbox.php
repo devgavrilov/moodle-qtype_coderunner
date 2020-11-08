@@ -220,6 +220,123 @@ class qtype_coderunner_jobesandbox extends qtype_coderunner_sandbox {
         }
     }
 
+    public function send($sourcecode, $language, $input, $files=null, $params=null) {
+        $language = strtolower($language);
+        if (!in_array($language, $this->languages)) { // This shouldn't be possible.
+            return (object) array('error' => self::UNKNOWN_SERVER_ERROR);
+        }
+
+        if ($input !== '' && substr($input, -1) != "\n") {
+            $input .= "\n";  // Force newline on the end if necessary.
+        }
+
+        $filelist = array();
+        if ($files !== null) {
+            foreach ($files as $filename => $contents) {
+                $id = md5($contents);
+                $filelist[] = array($id, $filename);
+            }
+        }
+
+        if ($language === 'java') {
+            $mainclass = $this->get_main_class($sourcecode);
+            if ($mainclass) {
+                $progname = "$mainclass.$language";
+            } else {
+                $progname = 'prog.java';  // I give up. Over to the sandbox. Will probably fail.
+            }
+        } else {
+            $progname = "__tester__.$language";
+        }
+
+        $runspec = array(
+            'language_id'       => $language,
+            'sourcecode'        => $sourcecode,
+            'sourcefilename'    => $progname,
+            'input'             => $input,
+            'file_list'         => $filelist
+        );
+
+        if (self::DEBUGGING) {
+            $runspec['debug'] = 1;
+        }
+
+        if ($params !== null) {
+            // Process any given sandbox parameters.
+            $runspec['parameters'] = $params;
+            if (isset($params['debug']) && $params['debug']) {
+                $runspec['debug'] = 1;
+            }
+            if (isset($params['sourcefilename'])) {
+                $runspec['sourcefilename'] = $params['sourcefilename'];
+            }
+            if (isset($params['jobeserver'])) {
+                $this->jobeserver = $params['jobeserver'];
+            }
+            if (isset($params['jobeapikey'])) {
+                $this->jobeapikey = $params['jobeapikey'];
+            }
+        }
+
+        $postbody = array('run_spec' => $runspec);
+
+        // Try submitting the job. If we get a 404, try again after
+        // putting all the files on the server. Anything else is an error.
+        $httpcode = $this->submit($postbody);
+        if ($httpcode == 404) { // Missing file(s)?
+            foreach ($files as $filename => $contents) {
+                if (($httpcode = $this->put_file($contents)) != 204) {
+                    break;
+                }
+            }
+            if ($httpcode == 204) {
+                // Try again if put_files all worked.
+                $httpcode = $this->submit($postbody);
+            }
+        }
+
+        if ($httpcode != 202   // We don't deal with Jobe servers that return 200!
+            || !is_object($this->response)) {  // Or any sort of broken communication with server.
+            $errorcode = $httpcode == 200 ? self::UNKNOWN_SERVER_ERROR : $this->get_error_code($httpcode);
+            return (object) array('error' => $errorcode, 'stderr' => $this->response);
+        } else {
+            return $this->response->runId;
+        }
+    }
+
+    public function check($run_id) {
+        // Try submitting the job. If we get a 404, try again after
+        // putting all the files on the server. Anything else is an error.
+        $httpcode = $this->get_result($run_id);
+
+        if ($httpcode == 204) {
+            throw new qtype_coderunner_not_checked_yet_exception();
+        }
+
+        if ($httpcode != 200   // We don't deal with Jobe servers that return 202!
+            || !is_object($this->response)  // Or any sort of broken ...
+            || !isset($this->response->outcome)) {     // ... communication with server.
+            $errorcode = $httpcode == 200 ? self::UNKNOWN_SERVER_ERROR : $this->get_error_code($httpcode);
+            return (object) array('error' => $errorcode, 'stderr' => $this->response);
+        } else if ($this->response->outcome == self::RESULT_SERVER_OVERLOAD) {
+            return (object) array('error' => self::SERVER_OVERLOAD);
+        } else {
+            $stderr = $this->filter_file_path($this->response->stderr);
+            // Any stderr output is treated as a runtime error.
+            if (trim($stderr) !== '') {
+                $this->response->outcome = self::RESULT_RUNTIME_ERROR;
+            }
+            return (object) array(
+                'error'   => self::OK,
+                'result'  => $this->response->outcome,
+                'signal'  => 0,              // Jobe doesn't return this.
+                'cmpinfo' => $this->response->cmpinfo,
+                'output'  => $this->filter_file_path($this->response->stdout),
+                'stderr'  => $stderr
+            );
+        }
+    }
+
 
     // Return the name of the main class in the given Java prog, or FALSE if no
     // such class found. Uses a regular expression to find a public class with
@@ -327,7 +444,12 @@ class qtype_coderunner_jobesandbox extends qtype_coderunner_sandbox {
         list($returncode, $response) = $this->http_request('runs', self::HTTP_POST, $job);
         $this->response = $response;
         return $returncode;
+    }
 
+    private function get_result($run_id) {
+        list($returncode, $response) = $this->http_request('runresults/' . $run_id, self::HTTP_GET);
+        $this->response = $response;
+        return $returncode;
     }
 
     // Send an http request to the Jobe server at the given
@@ -378,3 +500,6 @@ class qtype_coderunner_jobesandbox extends qtype_coderunner_sandbox {
     }
 }
 
+class qtype_coderunner_not_checked_yet_exception extends Exception {
+
+}

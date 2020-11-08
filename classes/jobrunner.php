@@ -102,6 +102,106 @@ class qtype_coderunner_jobrunner {
         return $outcome;
     }
 
+    public function send_tests(qtype_coderunner_question $question, $code, $attachments, $testcases, $isprecheck, $answerlanguage) {
+        $question->get_prototype();
+
+        $this->question = $question;
+        $this->code = $code;
+        $this->testcases = array_values($testcases);
+        $this->isprecheck = $isprecheck;
+        $this->grader = $question->get_grader();
+        $this->sandbox = $question->get_sandbox();
+        $this->files = array_merge($attachments, $question->get_files());
+        $attachedfilenames = implode(',', array_keys($attachments));
+        $this->sandboxparams = $question->get_sandbox_params();
+        $this->language = $question->get_language();
+
+        $this->allruns = array();
+        $this->templateparams = array(
+            'STUDENT_ANSWER' => $code,
+            'ESCAPED_STUDENT_ANSWER' => qtype_coderunner_escapers::python(null, $code, null), // LEGACY SUPPORT.
+            'MATLAB_ESCAPED_STUDENT_ANSWER' => qtype_coderunner_escapers::matlab(null, $code, null), // LEGACY SUPPORT.
+            'IS_PRECHECK' => $isprecheck ? "1" : "0",
+            'ANSWER_LANGUAGE' => $answerlanguage,
+            'ATTACHMENTS' => $attachedfilenames
+        );
+
+        if ($question->get_is_combinator() and
+            ($this->has_no_stdins() || $question->allow_multiple_stdins())) {
+            $run_ids = $this->send_combinator();
+        } else {
+            $run_ids = null;
+        }
+
+        // If that failed for any reason (e.g. timeout or signal), or if the
+        // template isn't a combinator, run the tests individually. Any compilation
+        // errors or stderr output in individual tests bomb the whole test process,
+        // but otherwise we should finish with a TestingOutcome object containing
+        // a test result for each test case.
+
+        if ($run_ids == null) {
+            $run_ids = $this->send_tests_singly();
+        }
+
+        $this->sandbox->close();
+        return $run_ids;
+    }
+    public function check_tests($run_ids, qtype_coderunner_question $question, $code, $attachments, $testcases, $isprecheck, $answerlanguage) {
+        $question->get_prototype();
+        if (empty($question->prototype)) {
+            // Missing prototype. We can't run this question.
+            $outcome = new qtype_coderunner_testing_outcome(0, 0, false);
+            $message = get_string('missingprototypewhenrunning', 'qtype_coderunner',
+                array('crtype' => $question->coderunnertype));
+            $outcome->set_status(qtype_coderunner_testing_outcome::STATUS_MISSING_PROTOTYPE, $message);
+            return $outcome;
+        }
+
+        $this->question = $question;
+        $this->code = $code;
+        $this->testcases = array_values($testcases);
+        $this->isprecheck = $isprecheck;
+        $this->grader = $question->get_grader();
+        $this->sandbox = $question->get_sandbox();
+        $this->files = array_merge($attachments, $question->get_files());
+        $attachedfilenames = implode(',', array_keys($attachments));
+        $this->sandboxparams = $question->get_sandbox_params();
+        $this->language = $question->get_language();
+
+        $this->allruns = array();
+        $this->templateparams = array(
+            'STUDENT_ANSWER' => $code,
+            'ESCAPED_STUDENT_ANSWER' => qtype_coderunner_escapers::python(null, $code, null), // LEGACY SUPPORT.
+            'MATLAB_ESCAPED_STUDENT_ANSWER' => qtype_coderunner_escapers::matlab(null, $code, null), // LEGACY SUPPORT.
+            'IS_PRECHECK' => $isprecheck ? "1" : "0",
+            'ANSWER_LANGUAGE' => $answerlanguage,
+            'ATTACHMENTS' => $attachedfilenames
+        );
+
+        if ($question->get_is_combinator() and
+            ($this->has_no_stdins() || $question->allow_multiple_stdins())) {
+            $outcome = $this->check_combinator($run_ids, $isprecheck);
+        } else {
+            $outcome = null;
+        }
+
+        // If that failed for any reason (e.g. timeout or signal), or if the
+        // template isn't a combinator, run the tests individually. Any compilation
+        // errors or stderr output in individual tests bomb the whole test process,
+        // but otherwise we should finish with a TestingOutcome object containing
+        // a test result for each test case.
+
+        if ($outcome == null) {
+            $outcome = $this->check_tests_singly($run_ids, $isprecheck);
+        }
+
+        $this->sandbox->close();
+        if ($question->get_show_source()) {
+            $outcome->sourcecodelist = $this->allruns;
+        }
+        return $outcome;
+    }
+
 
     // If the template is a combinator, try running all the tests in a single
     // go.
@@ -164,6 +264,55 @@ class qtype_coderunner_jobrunner {
         return $outcome;
     }
 
+    private function send_combinator() {
+        $question = $this->question;
+        $testprog = $question->twig_expand($question->template, $this->templateparams);
+        $this->allruns[] = $testprog;
+        return $this->sandbox->send($testprog, $this->language,
+            null, $this->files, $this->sandboxparams);
+    }
+    private function check_combinator($run_id, $isprecheck) {
+        $numtests = count($this->testcases);
+        $this->templateparams['TESTCASES'] = $this->testcases;
+        $maxmark = $this->maximum_possible_mark();
+        $outcome = new qtype_coderunner_testing_outcome($maxmark, $numtests, $isprecheck);
+
+        $run = $this->sandbox->check($run_id);
+
+        // If it's a template grader, we pass the result to the
+        // do_combinator_grading method. Otherwise we deal with syntax errors or
+        // a successful result without accompanying stderr.
+        // In all other cases (runtime error etc) we give up
+        // on the combinator.
+
+        if ($run->error !== qtype_coderunner_sandbox::OK) {
+            $outcome->set_status(
+                qtype_coderunner_testing_outcome::STATUS_SANDBOX_ERROR,
+                qtype_coderunner_sandbox::error_string($run));
+        } else if ($this->grader->name() === 'TemplateGrader') {
+            $outcome = $this->do_combinator_grading($run, $isprecheck);
+        } else if ($run->result === qtype_coderunner_sandbox::RESULT_COMPILATION_ERROR) {
+            $outcome->set_status(
+                qtype_coderunner_testing_outcome::STATUS_SYNTAX_ERROR,
+                $run->cmpinfo);
+        } else if ($run->result === qtype_coderunner_sandbox::RESULT_SUCCESS) {
+            $outputs = preg_split($this->question->get_test_splitter_re(), $run->output);
+            if (count($outputs) === $numtests) {
+                $i = 0;
+                foreach ($this->testcases as $testcase) {
+                    $outcome->add_test_result($this->grade($outputs[$i], $testcase));
+                    $i++;
+                }
+            } else {  // Error: wrong number of tests after splitting.
+                $error = get_string('brokencombinator', 'qtype_coderunner',
+                    array('numtests' => $numtests, 'numresults' => count($outputs)));
+                $outcome->set_status(qtype_coderunner_testing_outcome::STATUS_BAD_COMBINATOR, $error);
+            }
+        } else {
+            $outcome = null; // Something broke badly.
+        }
+        return $outcome;
+    }
 
     // Run all tests one-by-one on the sandbox.
     private function run_tests_singly($isprecheck) {
@@ -221,6 +370,71 @@ class qtype_coderunner_jobrunner {
                     break;
                 }
             }
+        }
+        return $outcome;
+    }
+
+    private function send_tests_singly() {
+        $run_ids = [];
+        $question = $this->question;
+        foreach ($this->testcases as $testcase) {
+            if ($this->question->iscombinatortemplate) {
+                $this->templateparams['TESTCASES'] = array($testcase);
+            } else {
+                $this->templateparams['TEST'] = $testcase;
+            }
+
+            $testprog = $question->twig_expand($question->template, $this->templateparams);
+
+            $input = isset($testcase->stdin) ? $testcase->stdin : '';
+            $this->allruns[] = $testprog;
+            $run_ids[] = $this->sandbox->send($testprog, $this->language,
+                $input, $this->files, $this->sandboxparams);
+        }
+        return $run_ids;
+    }
+    private function check_tests_singly($run_ids, $isprecheck) {
+        $maxmark = $this->maximum_possible_mark($this->testcases);
+        if ($maxmark == 0) {
+            $maxmark = 1; // Something silly is happening. Probably running a prototype with no tests.
+        }
+        $numtests = count($this->testcases);
+        $outcome = new qtype_coderunner_testing_outcome($maxmark, $numtests, $isprecheck);
+
+        $index = 0;
+
+        foreach ($this->testcases as $testcase) {
+            $run = $this->sandbox->check($run_ids[$index]);
+
+            if ($run->error !== qtype_coderunner_sandbox::OK) {
+                $outcome->set_status(
+                    qtype_coderunner_testing_outcome::STATUS_SANDBOX_ERROR,
+                    qtype_coderunner_sandbox::error_string($run));
+                break;
+            } else if ($run->result === qtype_coderunner_sandbox::RESULT_COMPILATION_ERROR) {
+                $outcome->set_status(
+                    qtype_coderunner_testing_outcome::STATUS_SYNTAX_ERROR,
+                    $run->cmpinfo);
+                break;
+            } else if ($run->result != qtype_coderunner_sandbox::RESULT_SUCCESS) {
+                $errormessage = $this->make_error_message($run);
+                $iserror = true;
+                $outcome->add_test_result($this->grade($errormessage, $testcase, $iserror));
+                break;
+            } else {
+                $testresult = $this->grade($run->output, $testcase);
+                $aborting = false;
+                if (isset($testresult->abort) && $testresult->abort) { // Templategrader abort request?
+                    $testresult->awarded = 0;  // Mark it wrong regardless.
+                    $testresult->iscorrect = false;
+                    $aborting = true;
+                }
+                $outcome->add_test_result($testresult);
+                if ($aborting) {
+                    break;
+                }
+            }
+            $index++;
         }
         return $outcome;
     }

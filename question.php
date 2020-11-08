@@ -231,10 +231,10 @@ class qtype_coderunner_question extends question_graded_automatically {
      * @return boolean
      */
     public function is_same_response(array $prevresponse, array $newresponse) {
-        $sameanswer = question_utils::arrays_same_at_key_missing_is_blank(
-                        $prevresponse, $newresponse, 'answer') &&
-                question_utils::arrays_same_at_key_missing_is_blank(
-                        $prevresponse, $newresponse, 'language');
+        $sameanswer =
+            question_utils::arrays_same_at_key_missing_is_blank($prevresponse, $newresponse, 'answer') &&
+            question_utils::arrays_same_at_key_missing_is_blank($prevresponse, $newresponse, 'language') &&
+            question_utils::arrays_same_at_key_missing_is_blank($prevresponse, $newresponse, '_check');
         $attachments1 = $this->get_attached_files($prevresponse);
         $attachments2 = $this->get_attached_files($newresponse);
         $sameattachments = $attachments1 === $attachments2;
@@ -307,45 +307,39 @@ class qtype_coderunner_question extends question_graded_automatically {
      * state is used when a sandbox error occurs.
      * @throws coding_exception
      */
-    public function grade_response(array $response, $isprecheck=false) {
+    public function grade_response(array $response, $isprecheck = false) {
         if ($isprecheck && empty($this->precheck)) {
             throw new coding_exception("Unexpected precheck");
         }
-        $language = empty($response['language']) ? '' : $response['language'];
-        $gradingreqd = true;
-        if (!empty($response['_testoutcome'])) {
-            $testoutcomeserial = $response['_testoutcome'];
-            $testoutcome = unserialize($testoutcomeserial);
-            if ($testoutcome instanceof qtype_coderunner_testing_outcome  // Ignore legacy-format outcomes.
-                    && $testoutcome->isprecheck == $isprecheck) {
-                $gradingreqd = false;  // Already graded and with same precheck state.
-            }
-        }
-        if ($gradingreqd) {
-            // We haven't already graded this submission or we graded it with
-            // a different precheck setting. Get the code and the attachments
-            // from the response. The attachments is an array with keys being
-            // filenames and values being file contents.
-            $code = $response['answer'];
-            $attachments = $this->get_attached_files($response);
-            $testcases = $this->filter_testcases($isprecheck, $this->precheck);
-            $runner = new qtype_coderunner_jobrunner();
-            $testoutcome = $runner->run_tests($this, $code, $attachments, $testcases, $isprecheck, $language);
-            $testoutcomeserial = serialize($testoutcome);
-        }
 
-        $datatocache = array('_testoutcome' => $testoutcomeserial);
-        if ($testoutcome->run_failed()) {
-            return array(0, question_state::$invalid, $datatocache);
-        } else if ($testoutcome->all_correct()) {
-             return array(1, question_state::$gradedright, $datatocache);
-        } else if ($this->allornothing &&
-                !($this->grader === 'TemplateGrader' && $this->iscombinatortemplate)) {
-            return array(0, question_state::$gradedwrong, $datatocache);
+        $language = empty($response['language']) ? '' : $response['language'];
+        $code = $response['answer'];
+        $attachments = $this->get_attached_files($response);
+        $testcases = $this->filter_testcases($isprecheck, $this->precheck);
+
+        $runner = new qtype_coderunner_jobrunner();
+        if (isset($response['_run_ids'])) {
+            $testoutcome = $runner->check_tests(json_decode($response['_run_ids']), $this, $code, $attachments, $testcases, $isprecheck, $language);
+            $testoutcomeserial = serialize($testoutcome);
+
+            $datatocache = array('_testoutcome' => $testoutcomeserial, '_run_ids' => $response['_run_ids']);
+            if ($testoutcome->run_failed()) {
+                return array(0, question_state::$invalid, $datatocache);
+            } else if ($testoutcome->all_correct()) {
+                 return array(1, question_state::$gradedright, $datatocache);
+            } else if ($this->allornothing &&
+                    !($this->grader === 'TemplateGrader' && $this->iscombinatortemplate)) {
+                return array(0, question_state::$gradedwrong, $datatocache);
+            } else {
+                // Allow partial marks if not allornothing or if it's a combinator template grader.
+                return array($testoutcome->mark_as_fraction(),
+                        question_state::$gradedpartial, $datatocache);
+            }
         } else {
-            // Allow partial marks if not allornothing or if it's a combinator template grader.
-            return array($testoutcome->mark_as_fraction(),
-                    question_state::$gradedpartial, $datatocache);
+            $run_ids = $runner->send_tests($this, $code, $attachments, $testcases, $isprecheck, $language);
+
+            $datatocache = array('_run_ids' => json_encode($run_ids));
+            return array(0, question_state::$needsgrading, $datatocache);
         }
     }
 

@@ -1178,17 +1178,27 @@ class qtype_coderunner_edit_form extends question_edit_form {
                 return $error;
             }
             list($mark, $state, $cachedata) = $question->grade_response($response);
+
+            for ($try = 0; $try < 12; $try++) {
+                try {
+                    list($mark, $state, $cachedata) = $question->grade_response(array_merge($response, $cachedata));
+                    if (isset($cachedata['_testoutcome'])) {
+                        if ($mark == 1.0) {
+                            return '';
+                        } else {
+                            $outcome = unserialize($cachedata['_testoutcome']);
+                            $error = $outcome->validation_error_message();
+                            return $error;
+                        }
+                    }
+                } catch (qtype_coderunner_not_checked_yet_exception $exception) {
+
+                }
+            }
+
+            return 'Code cannot be checked.';
         } catch (Exception $e) {
             return $e->getMessage();
-        }
-
-        // Return either an empty string if run was good or an error message.
-        if ($mark == 1.0) {
-            return '';
-        } else {
-            $outcome = unserialize($cachedata['_testoutcome']);
-            $error = $outcome->validation_error_message();
-            return $error;
         }
     }
 
