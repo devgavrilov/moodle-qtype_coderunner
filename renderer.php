@@ -63,7 +63,6 @@ class qtype_coderunner_renderer extends qtype_renderer {
             try {
                 $dbQa->process_action($last_step_data);
                 question_engine::save_questions_usage_by_activity($quba);
-                return $this->formulation_and_controls($dbQa, $options);
             } catch (qtype_coderunner_not_checked_yet_exception $exception) {
 
             }
