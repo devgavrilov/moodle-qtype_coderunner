@@ -231,10 +231,13 @@ class qtype_coderunner_question extends question_graded_automatically {
      * @return boolean
      */
     public function is_same_response(array $prevresponse, array $newresponse) {
+        $ischeck = isset($prevresponse['_run_ids']) && isset($newresponse['_run_ids']) && !question_utils::arrays_same_at_key_missing_is_blank($prevresponse, $newresponse, '_check');
+
         $sameanswer =
             question_utils::arrays_same_at_key_missing_is_blank($prevresponse, $newresponse, 'answer') &&
             question_utils::arrays_same_at_key_missing_is_blank($prevresponse, $newresponse, 'language') &&
-            question_utils::arrays_same_at_key_missing_is_blank($prevresponse, $newresponse, '_check');
+            !$ischeck;
+
         $attachments1 = $this->get_attached_files($prevresponse);
         $attachments2 = $this->get_attached_files($newresponse);
         $sameattachments = $attachments1 === $attachments2;
