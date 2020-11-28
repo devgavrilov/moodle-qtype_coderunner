@@ -76,7 +76,7 @@ class qtype_coderunner_jobrunner {
             'IS_PRECHECK' => $isprecheck ? "1" : "0",
             'ANSWER_LANGUAGE' => $answerlanguage,
             'ATTACHMENTS' => $attachedfilenames
-         );
+        );
 
         if ($question->get_is_combinator() and
                 ($this->has_no_stdins() || $question->allow_multiple_stdins())) {
@@ -266,6 +266,7 @@ class qtype_coderunner_jobrunner {
 
     private function send_combinator() {
         $question = $this->question;
+        $this->templateparams['TESTCASES'] = $this->testcases;
         $testprog = $question->twig_expand($question->template, $this->templateparams);
         $this->allruns[] = $testprog;
         return $this->sandbox->send($testprog, $this->language,
@@ -273,7 +274,6 @@ class qtype_coderunner_jobrunner {
     }
     private function check_combinator($run_id, $isprecheck) {
         $numtests = count($this->testcases);
-        $this->templateparams['TESTCASES'] = $this->testcases;
         $maxmark = $this->maximum_possible_mark();
         $outcome = new qtype_coderunner_testing_outcome($maxmark, $numtests, $isprecheck);
 
