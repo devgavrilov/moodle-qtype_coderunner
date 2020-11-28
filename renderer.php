@@ -63,6 +63,7 @@ class qtype_coderunner_renderer extends qtype_renderer {
             try {
                 $dbQa->process_action($last_step_data);
                 question_engine::save_questions_usage_by_activity($quba);
+                header("Refresh:0");
             } catch (qtype_coderunner_not_checked_yet_exception $exception) {
 
             }
