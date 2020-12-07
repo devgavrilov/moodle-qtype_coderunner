@@ -296,7 +296,8 @@ class qtype_coderunner_jobesandbox extends qtype_coderunner_sandbox {
         }
 
         if ($httpcode != 202   // We don't deal with Jobe servers that return 200!
-            || !is_object($this->response)) {  // Or any sort of broken communication with server.
+            || !is_object($this->response) // Or any sort of broken communication with server.
+            || !isset($this->response->runId)) {
             $errorcode = $httpcode == 200 ? self::UNKNOWN_SERVER_ERROR : $this->get_error_code($httpcode);
             return (object) array('error' => $errorcode, 'stderr' => $this->response);
         } else {
