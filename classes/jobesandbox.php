@@ -263,7 +263,6 @@ class qtype_coderunner_jobesandbox extends qtype_coderunner_sandbox {
 
         if ($params !== null) {
             // Process any given sandbox parameters.
-            $runspec['parameters'] = $params;
             if (isset($params['debug']) && $params['debug']) {
                 $runspec['debug'] = 1;
             }
@@ -275,6 +274,10 @@ class qtype_coderunner_jobesandbox extends qtype_coderunner_sandbox {
             }
             if (isset($params['jobeapikey'])) {
                 $this->jobeapikey = $params['jobeapikey'];
+            }
+
+            if ($params != []) {
+                $runspec['parameters'] = $params;
             }
         }
 
